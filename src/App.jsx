@@ -1681,35 +1681,7 @@ export default function App() {
     }
   }, [phase]);
 
-  useEffect(() => {
-    if (!rtlActive) return;
-    const home = customRoute[0] || [-6.176392, 106.826153];
-    const start = dronePos;
-    let step = 0;
-    const totalRtlSteps = 30; // 30 steps of 150ms = 4.5 seconds to return home
-    
-    const interval = setInterval(() => {
-      step += 1;
-      const lat = start[0] + (home[0] - start[0]) * (step / totalRtlSteps);
-      const lng = start[1] + (home[1] - start[1]) * (step / totalRtlSteps);
-      setDronePos([lat, lng]);
-      
-      setTelemetry(p => ({
-        ...p,
-        altitude: Math.max(0, +(p.altitude - (p.altitude / (totalRtlSteps - step + 1))).toFixed(1)),
-        speed: 6.0,
-      }));
-      
-      if (step >= totalRtlSteps) {
-        clearInterval(interval);
-        setRtlActive(false);
-        setPhase("landing");
-        setArmed(false);
-      }
-    }, 150);
-    
-    return () => clearInterval(interval);
-  }, [rtlActive, customRoute, dronePos]);
+
   
   useEffect(() => {
     document.documentElement.classList.remove("colorblind-deuteranopia", "colorblind-protanopia", "colorblind-tritanopia");
@@ -1752,6 +1724,36 @@ export default function App() {
   ]);
   const [dronePos, setDronePos] = useState([-6.176392, 106.826153]);
   const [currentWpIndex, setCurrentWpIndex] = useState(0);
+
+  useEffect(() => {
+    if (!rtlActive) return;
+    const home = customRoute[0] || [-6.176392, 106.826153];
+    const start = dronePos;
+    let step = 0;
+    const totalRtlSteps = 30; // 30 steps of 150ms = 4.5 seconds to return home
+    
+    const interval = setInterval(() => {
+      step += 1;
+      const lat = start[0] + (home[0] - start[0]) * (step / totalRtlSteps);
+      const lng = start[1] + (home[1] - start[1]) * (step / totalRtlSteps);
+      setDronePos([lat, lng]);
+      
+      setTelemetry(p => ({
+        ...p,
+        altitude: Math.max(0, +(p.altitude - (p.altitude / (totalRtlSteps - step + 1))).toFixed(1)),
+        speed: 6.0,
+      }));
+      
+      if (step >= totalRtlSteps) {
+        clearInterval(interval);
+        setRtlActive(false);
+        setPhase("landing");
+        setArmed(false);
+      }
+    }, 150);
+    
+    return () => clearInterval(interval);
+  }, [rtlActive, customRoute, dronePos]);
 
   // Smooth interpolation along customRoute when In-Flight and Armed
   useEffect(() => {
