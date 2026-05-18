@@ -86,16 +86,40 @@ const GLOBAL_CSS = `
   --border2: #243552;
 }
 
-/* Okabe-Ito Colorblind Accessibility Override */
-:root.colorblind {
-  --green: #0072B2 !important; /* Safe Blue */
+/* Deuteranopia Palette */
+:root.colorblind-deuteranopia {
+  --green: #0072B2 !important; /* Cobalt Blue */
   --green-glow: rgba(0,114,178,0.3) !important;
-  --amber: #E69F00 !important; /* Safety Orange */
-  --amber-glow: rgba(230,159,0,0.35) !important;
-  --red: #CC79A7 !important;   /* Magenta */
-  --red-glow: rgba(204,121,167,0.35) !important;
+  --amber: #F0E442 !important; /* Bright Yellow */
+  --amber-glow: rgba(240,228,66,0.3) !important;
+  --red: #D55E00 !important;   /* Vermillion Orange */
+  --red-glow: rgba(213,94,0,0.35) !important;
   --cyan: #56B4E9 !important;  /* Sky Blue */
   --cyan-glow: rgba(86,180,233,0.3) !important;
+}
+
+/* Protanopia Palette */
+:root.colorblind-protanopia {
+  --green: #377eb8 !important; /* Clear Blue */
+  --green-glow: rgba(55,126,184,0.3) !important;
+  --amber: #fdbf6f !important; /* Light Orange */
+  --amber-glow: rgba(253,191,111,0.3) !important;
+  --red: #ff3333 !important;   /* High-Luminance Red */
+  --red-glow: rgba(255,51,51,0.35) !important;
+  --cyan: #e31a1c !important;  /* Brick Red */
+  --cyan-glow: rgba(227,26,28,0.3) !important;
+}
+
+/* Tritanopia Palette */
+:root.colorblind-tritanopia {
+  --green: #05b3c3 !important; /* Teal */
+  --green-glow: rgba(5,179,195,0.3) !important;
+  --amber: #e41a1c !important; /* Pure Red contrast */
+  --amber-glow: rgba(228,26,28,0.3) !important;
+  --red: #f781bf !important;   /* High-Contrast Pink */
+  --red-glow: rgba(247,129,191,0.35) !important;
+  --cyan: #ff7f00 !important;  /* Orange */
+  --cyan-glow: rgba(255,127,0,0.3) !important;
 }
 
 html, body, #root { height: 100%; overflow: hidden; }
@@ -396,7 +420,7 @@ function SafetyBadge({passed}) {
 /* ─────────────────────────────────────────────────────────────────────────
    HEADER
 ───────────────────────────────────────────────────────────────────────── */
-function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handleApiKeyChange,colorblind,setColorblind,ttsEnabled,setTtsEnabled,setShortcutsGuideOpen}) {
+function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handleApiKeyChange,colorblindMode,setColorblindMode,ttsEnabled,setTtsEnabled,setShortcutsGuideOpen}) {
   const phases = ["preflight","inflight","landing"];
   const labels = {"preflight":"Pre-Flight","inflight":"In-Flight","landing":"Landing"};
   return (
@@ -515,30 +539,36 @@ function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handle
 
       {/* Accessibility Toolbar */}
       <div style={{display:"flex",alignItems:"center",gap:6,padding:"0 12px",borderLeft:"1px solid var(--border)",height:"100%"}}>
-        {/* Colorblind Toggle */}
-        <button 
-          onClick={() => {
-            setColorblind(v => !v);
-            speakText(!colorblind ? "Mode buta warna diaktifkan" : "Mode buta warna dimatikan");
+        {/* Colorblind Dropdown */}
+        <select
+          value={colorblindMode}
+          onChange={(e) => {
+            const mode = e.target.value;
+            setColorblindMode(mode);
+            if (mode === "none") speakText("Kembali ke mode normal.");
+            else if (mode === "deuteranopia") speakText("Mode Deuteranopia diaktifkan.");
+            else if (mode === "protanopia") speakText("Mode Protanopia diaktifkan.");
+            else if (mode === "tritanopia") speakText("Mode Tritanopia diaktifkan.");
           }}
           style={{
-            background: colorblind ? "rgba(0,114,178,0.15)" : "none",
-            border: `1px solid ${colorblind ? "var(--green)" : "var(--border)"}`,
+            background: colorblindMode !== "none" ? "rgba(0,114,178,0.15)" : "none",
+            border: `1px solid ${colorblindMode !== "none" ? "var(--green)" : "var(--border)"}`,
             borderRadius: 4,
-            padding: "4px 8px",
+            padding: "4px 6px",
             fontSize: 9,
-            color: colorblind ? "var(--green)" : "var(--text2)",
+            color: colorblindMode !== "none" ? "var(--green)" : "var(--text2)",
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
             fontWeight: 700,
+            outline: "none",
             transition: "all 0.2s"
           }}
-          title="Toggle Colorblind Mode (Shortcut: C)"
+          title="Select Colorblind Mode (Shortcut: C to cycle)"
         >
-          👁️ {colorblind ? "Colorblind ON" : "Colorblind"}
-        </button>
+          <option value="none" style={{background:"var(--panel)",color:"var(--text)"}}>👁️ Normal Mode</option>
+          <option value="deuteranopia" style={{background:"var(--panel)",color:"var(--text)"}}>👁️ Deuteranopia</option>
+          <option value="protanopia" style={{background:"var(--panel)",color:"var(--text)"}}>👁️ Protanopia</option>
+          <option value="tritanopia" style={{background:"var(--panel)",color:"var(--text)"}}>👁️ Tritanopia</option>
+        </select>
 
         {/* TTS Toggle */}
         <button 
@@ -1635,17 +1665,16 @@ export default function App() {
   const [nliOpen,  setNliOpen]  = useState(false);
   const [armed,    setArmed]    = useState(false);
   const [checklistDone, setChecklistDone] = useState(new Set());
-  const [colorblind, setColorblind] = useState(false);
+  const [colorblindMode, setColorblindMode] = useState("none"); // "none", "deuteranopia", "protanopia", "tritanopia"
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [shortcutsGuideOpen, setShortcutsGuideOpen] = useState(false);
   
   useEffect(() => {
-    if (colorblind) {
-      document.documentElement.classList.add("colorblind");
-    } else {
-      document.documentElement.classList.remove("colorblind");
+    document.documentElement.classList.remove("colorblind-deuteranopia", "colorblind-protanopia", "colorblind-tritanopia");
+    if (colorblindMode !== "none") {
+      document.documentElement.classList.add(`colorblind-${colorblindMode}`);
     }
-  }, [colorblind]);
+  }, [colorblindMode]);
 
   useEffect(() => {
     window.ttsEnabled = ttsEnabled;
@@ -1972,9 +2001,22 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
         e.preventDefault();
         setNliOpen(v => !v);
       } else if (key === "c") {
-        setColorblind(v => !v);
-        // Using negation since state update is async
-        speakText(!colorblind ? "Mode buta warna diaktifkan" : "Mode buta warna dimatikan");
+        setColorblindMode(prev => {
+          let next = "none";
+          if (prev === "none") {
+            next = "deuteranopia";
+            speakText("Mode Deuteranopia diaktifkan.");
+          } else if (prev === "deuteranopia") {
+            next = "protanopia";
+            speakText("Mode Protanopia diaktifkan.");
+          } else if (prev === "protanopia") {
+            next = "tritanopia";
+            speakText("Mode Tritanopia diaktifkan.");
+          } else {
+            speakText("Kembali ke mode normal.");
+          }
+          return next;
+        });
       } else if (key === "v") {
         setTtsEnabled(v => !v);
         if (ttsEnabled) {
@@ -2012,7 +2054,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [phase, pendingHitl, ttsEnabled, colorblind, confirmHitl]);
+  }, [phase, pendingHitl, ttsEnabled, colorblindMode, confirmHitl]);
 
   return (
     <div className="scanlines" style={{display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden",background:"var(--void)"}}>
@@ -2025,8 +2067,8 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
         armed={armed} 
         apiKey={apiKey} 
         handleApiKeyChange={handleApiKeyChange}
-        colorblind={colorblind}
-        setColorblind={setColorblind}
+        colorblindMode={colorblindMode}
+        setColorblindMode={setColorblindMode}
         ttsEnabled={ttsEnabled}
         setTtsEnabled={setTtsEnabled}
         setShortcutsGuideOpen={setShortcutsGuideOpen}
