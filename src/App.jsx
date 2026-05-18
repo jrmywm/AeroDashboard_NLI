@@ -1437,7 +1437,7 @@ function NLIPanel({messages,input,setInput,onSubmit,loading,chatEndRef,telemetry
 /* ─────────────────────────────────────────────────────────────────────────
    RIGHT PANEL
 ───────────────────────────────────────────────────────────────────────── */
-function RightPanel({phase,setPhase,setArmed,setRtlActive,telemetry,alerts,onDismissAlert,setNliOpen}) {
+function RightPanel({phase,setPhase,setArmed,setRtlActive,isLoitering,setIsLoitering,telemetry,alerts,onDismissAlert,setNliOpen}) {
   return (
     <aside style={{width:232,background:"var(--panel)",borderLeft:"1px solid var(--border)",display:"flex",flexDirection:"column",flexShrink:0,overflow:"hidden"}}>
       <div style={{flex:1,overflowY:"auto",padding:10}}>
@@ -1481,7 +1481,9 @@ function RightPanel({phase,setPhase,setArmed,setRtlActive,telemetry,alerts,onDis
         <Sec>⚡ QUICK ACTIONS</Sec>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {[
-            {l:"⏸ Loiter",c:"btn-ghost", cb:() => speakText("Misi dijeda. Drone menahan posisi di udara.")},
+            isLoitering 
+              ? {l:"▶ Resume",c:"btn-g", cb:() => { setIsLoitering(false); speakText("Melanjutkan misi otonom menuju waypoint berikutnya."); }}
+              : {l:"⏸ Loiter",c:"btn-ghost", cb:() => { setIsLoitering(true); speakText("Misi dijeda. Drone menahan posisi di udara."); }},
             {l:"🏠 RTL",   c:"btn-a",     cb:() => { setRtlActive(true); speakText("Manual override diaktifkan. Membatalkan misi dan kembali ke pangkalan."); }},
             {l:"⬇ Land",  c:"btn-ghost", cb:() => { setPhase("landing"); setArmed(false); speakText("Manual override diaktifkan. Drone mendarat darurat di posisi saat ini."); }},
             {l:"💬 NLI",   c:"btn-c",     cb:()=>setNliOpen(true)},
@@ -1669,6 +1671,16 @@ export default function App() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [shortcutsGuideOpen, setShortcutsGuideOpen] = useState(false);
   const [rtlActive, setRtlActive] = useState(false);
+  const [isLoitering, setIsLoitering] = useState(false);
+  const wpIdxRef = useRef(0);
+  const stepRef = useRef(0);
+
+  useEffect(() => {
+    if (phase === "preflight") {
+      wpIdxRef.current = 0;
+      stepRef.current = 0;
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (!rtlActive) return;
@@ -1746,16 +1758,24 @@ export default function App() {
   useEffect(() => {
     if (phase !== "inflight" || !armed || customRoute.length === 0) return;
 
-    let wpIdx = 0;
-    setDronePos(customRoute[0]);
-    setCurrentWpIndex(0);
+    let wpIdx = wpIdxRef.current;
+    let step = stepRef.current;
 
-    let start = customRoute[0];
-    let end = customRoute[1] || customRoute[0];
-    let step = 0;
+    let start = customRoute[wpIdx] || customRoute[0];
+    let end = customRoute[wpIdx + 1] || start;
     const totalSteps = 40; // 40 steps between waypoints (takes 8 seconds per waypoint for smooth presentation)
 
     const interval = setInterval(() => {
+      if (isLoitering) {
+        // Just hover: slight fluctuations, speed near zero
+        setTelemetry(p => ({
+          ...p,
+          altitude: +(p.altitude + (Math.random() - 0.5) * 0.1).toFixed(1),
+          speed: +(0.1 + Math.random() * 0.1).toFixed(1),
+        }));
+        return;
+      }
+
       if (wpIdx >= customRoute.length - 1) {
         clearInterval(interval);
         setPhase("landing");
@@ -1764,6 +1784,7 @@ export default function App() {
       }
 
       step += 1;
+      stepRef.current = step;
       const lat = start[0] + (end[0] - start[0]) * (step / totalSteps);
       const lng = start[1] + (end[1] - start[1]) * (step / totalSteps);
       setDronePos([lat, lng]);
@@ -1778,15 +1799,17 @@ export default function App() {
 
       if (step >= totalSteps) {
         wpIdx += 1;
+        wpIdxRef.current = wpIdx;
         setCurrentWpIndex(wpIdx);
-        start = customRoute[wpIdx];
-        end = customRoute[wpIdx + 1] || customRoute[wpIdx];
+        start = customRoute[wpIdx] || start;
+        end = customRoute[wpIdx + 1] || start;
         step = 0;
+        stepRef.current = 0;
       }
     }, 200); // 200ms tick for smooth motion
 
     return () => clearInterval(interval);
-  }, [phase, armed, customRoute]);
+  }, [phase, armed, customRoute, isLoitering]);
 
   /* Inject CSS */
   useEffect(()=>{
@@ -1881,6 +1904,16 @@ export default function App() {
           responseText = "✓ Gemini NLI (Simulasi Local): Mengaktifkan protokol mendarat otonom dan Return-to-Launch. Drone terbang kembali ke pangkalan.";
           mockData = { safe: true, conf: "HIGH" };
           speakText("Mengaktifkan protokol Return to Launch. Drone terbang kembali ke pangkalan.");
+        } else if (lowerTxt.includes("jeda") || lowerTxt.includes("pause") || lowerTxt.includes("loiter") || lowerTxt.includes("tahan")) {
+          setIsLoitering(true);
+          responseText = "✓ Gemini NLI (Simulasi Local): Menangguhkan misi otonom. Drone mengambang menahan posisi (Loiter aktif).";
+          mockData = { safe: true, conf: "HIGH" };
+          speakText("Misi otonom ditangguhkan. Drone menahan posisi di udara.");
+        } else if (lowerTxt.includes("lanjut") || lowerTxt.includes("resume") || lowerTxt.includes("continue")) {
+          setIsLoitering(false);
+          responseText = "✓ Gemini NLI (Simulasi Local): Melanjutkan misi otonom drone dari posisi terakhir.";
+          mockData = { safe: true, conf: "HIGH" };
+          speakText("Melanjutkan misi otonom menuju waypoint berikutnya.");
         } else if (lowerTxt.includes("abaikan") || lowerTxt.includes("baterai") || lowerTxt.includes("paksa")) {
           responseText = "⛔ PERINTAH DITOLAK — Safety Validation Layer memblokir eksekusi. Alasan: Perintah melanggar batas keselamatan operasional (Baterai Kritis).";
           mockData = { safe: false, conf: "HIGH" };
@@ -2140,7 +2173,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
             <RtlConfigView telemetry={telemetry} setTelemetry={setTelemetry} />
           )}
         </div>
-        <RightPanel phase={phase} setPhase={setPhase} setArmed={setArmed} setRtlActive={setRtlActive} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
+        <RightPanel phase={phase} setPhase={setPhase} setArmed={setArmed} setRtlActive={setRtlActive} isLoitering={isLoitering} setIsLoitering={setIsLoitering} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
       </div>
       <TelemetryBar telemetry={telemetry} phase={phase}/>
       {pendingHitl&&<HitLModal data={pendingHitl} onConfirm={confirmHitl} onCancel={()=>setPendingHitl(null)}/>}
