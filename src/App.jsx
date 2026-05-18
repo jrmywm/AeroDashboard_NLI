@@ -1437,7 +1437,7 @@ function NLIPanel({messages,input,setInput,onSubmit,loading,chatEndRef,telemetry
 /* ─────────────────────────────────────────────────────────────────────────
    RIGHT PANEL
 ───────────────────────────────────────────────────────────────────────── */
-function RightPanel({phase,setPhase,setArmed,telemetry,alerts,onDismissAlert,setNliOpen}) {
+function RightPanel({phase,setPhase,setArmed,setRtlActive,telemetry,alerts,onDismissAlert,setNliOpen}) {
   return (
     <aside style={{width:232,background:"var(--panel)",borderLeft:"1px solid var(--border)",display:"flex",flexDirection:"column",flexShrink:0,overflow:"hidden"}}>
       <div style={{flex:1,overflowY:"auto",padding:10}}>
@@ -1482,7 +1482,7 @@ function RightPanel({phase,setPhase,setArmed,telemetry,alerts,onDismissAlert,set
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {[
             {l:"⏸ Loiter",c:"btn-ghost", cb:() => speakText("Misi dijeda. Drone menahan posisi di udara.")},
-            {l:"🏠 RTL",   c:"btn-a",     cb:() => { setPhase("landing"); setArmed(false); speakText("Manual override diaktifkan. Membatalkan misi dan kembali ke pangkalan."); }},
+            {l:"🏠 RTL",   c:"btn-a",     cb:() => { setRtlActive(true); speakText("Manual override diaktifkan. Membatalkan misi dan kembali ke pangkalan."); }},
             {l:"⬇ Land",  c:"btn-ghost", cb:() => { setPhase("landing"); setArmed(false); speakText("Manual override diaktifkan. Drone mendarat darurat di posisi saat ini."); }},
             {l:"💬 NLI",   c:"btn-c",     cb:()=>setNliOpen(true)},
           ].map(({l,c,cb})=>(
@@ -1668,6 +1668,37 @@ export default function App() {
   const [colorblindMode, setColorblindMode] = useState("none"); // "none", "deuteranopia", "protanopia", "tritanopia"
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [shortcutsGuideOpen, setShortcutsGuideOpen] = useState(false);
+  const [rtlActive, setRtlActive] = useState(false);
+
+  useEffect(() => {
+    if (!rtlActive) return;
+    const home = customRoute[0] || [-6.176392, 106.826153];
+    const start = dronePos;
+    let step = 0;
+    const totalRtlSteps = 30; // 30 steps of 150ms = 4.5 seconds to return home
+    
+    const interval = setInterval(() => {
+      step += 1;
+      const lat = start[0] + (home[0] - start[0]) * (step / totalRtlSteps);
+      const lng = start[1] + (home[1] - start[1]) * (step / totalRtlSteps);
+      setDronePos([lat, lng]);
+      
+      setTelemetry(p => ({
+        ...p,
+        altitude: Math.max(0, +(p.altitude - (p.altitude / (totalRtlSteps - step + 1))).toFixed(1)),
+        speed: 6.0,
+      }));
+      
+      if (step >= totalRtlSteps) {
+        clearInterval(interval);
+        setRtlActive(false);
+        setPhase("landing");
+        setArmed(false);
+      }
+    }, 150);
+    
+    return () => clearInterval(interval);
+  }, [rtlActive, customRoute, dronePos]);
   
   useEffect(() => {
     document.documentElement.classList.remove("colorblind-deuteranopia", "colorblind-protanopia", "colorblind-tritanopia");
@@ -1846,11 +1877,10 @@ export default function App() {
           mockData = { safe: true, conf: "HIGH", setArmed: true };
           speakText("Menghidupkan motor drone. Lepas landas otonom aktif.");
         } else if (lowerTxt.includes("mendarat") || lowerTxt.includes("landing") || lowerTxt.includes("rtl") || lowerTxt.includes("kembali")) {
-          setPhase("landing");
-          setArmed(false);
-          responseText = "✓ Gemini NLI (Simulasi Local): Mengaktifkan protokol mendarat otonom dan Return-to-Launch. Drone mendarat di pangkalan.";
-          mockData = { safe: true, conf: "HIGH", setPhase: "landing" };
-          speakText("Mengaktifkan protokol Return to Launch. Drone mendarat di pangkalan.");
+          setRtlActive(true);
+          responseText = "✓ Gemini NLI (Simulasi Local): Mengaktifkan protokol mendarat otonom dan Return-to-Launch. Drone terbang kembali ke pangkalan.";
+          mockData = { safe: true, conf: "HIGH" };
+          speakText("Mengaktifkan protokol Return to Launch. Drone terbang kembali ke pangkalan.");
         } else if (lowerTxt.includes("abaikan") || lowerTxt.includes("baterai") || lowerTxt.includes("paksa")) {
           responseText = "⛔ PERINTAH DITOLAK — Safety Validation Layer memblokir eksekusi. Alasan: Perintah melanggar batas keselamatan operasional (Baterai Kritis).";
           mockData = { safe: false, conf: "HIGH" };
@@ -1922,8 +1952,11 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
         setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
       }
       if (r.setPhase) {
-        setPhase(r.setPhase);
-        if (r.setPhase === "landing") setArmed(false);
+        if (r.setPhase === "landing") {
+          setRtlActive(true);
+        } else {
+          setPhase(r.setPhase);
+        }
       }
       if (r.setArmed !== undefined) {
         setArmed(r.setArmed);
@@ -1963,7 +1996,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
     
     const action = pendingHitl.hitl.action || "";
     if(action.includes("RTL")) {
-      setPhase("landing");
+      setRtlActive(true);
     } else if(action.includes("Kirim") || action.includes("Konfirmasi") || action.includes("Mulai") || action.includes("ARM")) {
       setArmed(true);
       setPhase("inflight");
@@ -1995,8 +2028,8 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
         setPhase("inflight");
         speakText("Beralih ke fase in flight");
       } else if (key === "3") {
-        setPhase("landing");
-        speakText("Beralih ke fase landing");
+        setRtlActive(true);
+        speakText("Beralih ke fase landing darurat otonom.");
       } else if (key === "n") {
         e.preventDefault();
         setNliOpen(v => !v);
@@ -2107,7 +2140,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
             <RtlConfigView telemetry={telemetry} setTelemetry={setTelemetry} />
           )}
         </div>
-        <RightPanel phase={phase} setPhase={setPhase} setArmed={setArmed} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
+        <RightPanel phase={phase} setPhase={setPhase} setArmed={setArmed} setRtlActive={setRtlActive} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
       </div>
       <TelemetryBar telemetry={telemetry} phase={phase}/>
       {pendingHitl&&<HitLModal data={pendingHitl} onConfirm={confirmHitl} onCancel={()=>setPendingHitl(null)}/>}
