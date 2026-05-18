@@ -1673,13 +1673,13 @@ export default function App() {
     localStorage.setItem('gemini_api_key', e.target.value);
   };
   const [customRoute, setCustomRoute] = useState([
-    [-6.200000, 106.816000],
-    [-6.199000, 106.817000],
-    [-6.198000, 106.818000],
-    [-6.197000, 106.819000],
-    [-6.196000, 106.820000]
+    [-6.176392, 106.826153],
+    [-6.176392, 106.828153],
+    [-6.174392, 106.828153],
+    [-6.174392, 106.826153],
+    [-6.176392, 106.826153]
   ]);
-  const [dronePos, setDronePos] = useState([-6.200000, 106.816000]);
+  const [dronePos, setDronePos] = useState([-6.176392, 106.826153]);
   const [currentWpIndex, setCurrentWpIndex] = useState(0);
 
   // Smooth interpolation along customRoute when In-Flight and Armed
