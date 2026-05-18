@@ -1640,6 +1640,30 @@ export default function App() {
           responseText = "✓ Gemini NLI (Simulasi Local): Berhasil membuat rute survei melingkar (16 waypoint) di sekitar Monas dengan target ketinggian 45 meter. Peta dipusatkan ke Monas!";
           mockData = { safe: true, conf: "HIGH", route: smoothRoute };
           speakText("Berhasil membuat rute survei melingkar di sekitar Monas setinggi empat puluh lima meter.");
+        } else if (lowerTxt.includes("preflight") || lowerTxt.includes("checklist") || lowerTxt.includes("verifikasi") || lowerTxt.includes("siap") || lowerTxt.includes("pemeriksaan")) {
+          setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
+          responseText = "✓ Gemini NLI (Simulasi Local): Seluruh sistem checklist keselamatan pre-flight telah berhasil diverifikasi dan dicentang hijau. Drone siap lepas landas!";
+          mockData = { safe: true, conf: "HIGH", checkAll: true };
+          speakText("Semua sistem preflight checklist telah berhasil diverifikasi. Status drone siap lepas landas.");
+        } else if (lowerTxt.includes("lepas landas") || lowerTxt.includes("takeoff") || lowerTxt.includes("terbang") || lowerTxt.includes("arm")) {
+          setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
+          setArmed(true);
+          setPhase("inflight");
+          setTelemetry(p => ({
+            ...p,
+            altitude: 10.0,
+            speed: 8.3,
+            battery: 98.0
+          }));
+          responseText = "✓ Gemini NLI (Simulasi Local): Menghidupkan motor drone. Lepas landas otonom aktif. Ketinggian jelajah sepuluh meter.";
+          mockData = { safe: true, conf: "HIGH", setArmed: true };
+          speakText("Menghidupkan motor drone. Lepas landas otonom aktif.");
+        } else if (lowerTxt.includes("mendarat") || lowerTxt.includes("landing") || lowerTxt.includes("rtl") || lowerTxt.includes("kembali")) {
+          setPhase("landing");
+          setArmed(false);
+          responseText = "✓ Gemini NLI (Simulasi Local): Mengaktifkan protokol mendarat otonom dan Return-to-Launch. Drone mendarat di pangkalan.";
+          mockData = { safe: true, conf: "HIGH", setPhase: "landing" };
+          speakText("Mengaktifkan protokol Return to Launch. Drone mendarat di pangkalan.");
         } else if (lowerTxt.includes("abaikan") || lowerTxt.includes("baterai") || lowerTxt.includes("paksa")) {
           responseText = "⛔ PERINTAH DITOLAK — Safety Validation Layer memblokir eksekusi. Alasan: Perintah melanggar batas keselamatan operasional (Baterai Kritis).";
           mockData = { safe: false, conf: "HIGH" };
@@ -1684,6 +1708,9 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
   "conf": "HIGH" atau "MEDIUM" atau "LOW",
   "mavlink": ["MAV_CMD_..."] atau null,
   "route": [[lat, lng], [lat, lng], ...] (opsional, jika instruksi berupa pembuatan rute/waypoint baru. Monas adalah sekitar -6.1754, 106.8271. Thamrin City/Grand Indonesia adalah -6.1980, 106.8180. Jika meminta lingkaran/survei area Monas, buatlah 5 waypoint sirkular berjarak sekitar 0.001 derajat mengelilingi Monas),
+  "setArmed": true/false (opsional, jika pengguna meminta lepas landas/terbang/arm atau mendarat/disarm),
+  "setPhase": "preflight" atau "inflight" atau "landing" (opsional, jika memindahkan fase flight atau mendarat/kembali),
+  "checkAll": true/false (opsional, jika meminta verifikasi checklist pre-flight),
   "hitl": { "summary": "deskripsi eksekusi singkat", "time": "est waktu", "batt": "est sisa baterai", "action": "label tombol konfirmasi" } (isi hitl jika butuh konfirmasi eksekusi)
 }`;
 
@@ -1702,6 +1729,29 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
         playWarningAudio("Peringatan Keselamatan: " + r.text);
       } else {
         speakText(r.text);
+      }
+
+      if (r.checkAll) {
+        setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
+      }
+      if (r.setPhase) {
+        setPhase(r.setPhase);
+        if (r.setPhase === "landing") setArmed(false);
+      }
+      if (r.setArmed !== undefined) {
+        setArmed(r.setArmed);
+        if (r.setArmed) {
+          setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
+          setPhase("inflight");
+          setTelemetry(p => ({
+            ...p,
+            altitude: 10.0,
+            speed: 8.3,
+            battery: 98.0
+          }));
+        } else {
+          setPhase("preflight");
+        }
       }
 
       if (r.route && Array.isArray(r.route) && r.route.length > 0) {
