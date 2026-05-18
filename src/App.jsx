@@ -520,7 +520,6 @@ function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handle
                     letterSpacing: ".05em",
                     padding: "1px 5px",
                     borderRadius: 3,
-                    fontSize: 7,
                     lineHeight: 1
                   }}>
                     {p === "preflight" ? "READY" : p === "inflight" ? "ACTIVE" : "DESCENT"}
