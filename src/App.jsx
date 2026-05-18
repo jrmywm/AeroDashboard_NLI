@@ -1437,7 +1437,7 @@ function NLIPanel({messages,input,setInput,onSubmit,loading,chatEndRef,telemetry
 /* ─────────────────────────────────────────────────────────────────────────
    RIGHT PANEL
 ───────────────────────────────────────────────────────────────────────── */
-function RightPanel({phase,telemetry,alerts,onDismissAlert,setNliOpen}) {
+function RightPanel({phase,setPhase,setArmed,telemetry,alerts,onDismissAlert,setNliOpen}) {
   return (
     <aside style={{width:232,background:"var(--panel)",borderLeft:"1px solid var(--border)",display:"flex",flexDirection:"column",flexShrink:0,overflow:"hidden"}}>
       <div style={{flex:1,overflowY:"auto",padding:10}}>
@@ -1481,10 +1481,10 @@ function RightPanel({phase,telemetry,alerts,onDismissAlert,setNliOpen}) {
         <Sec>⚡ QUICK ACTIONS</Sec>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {[
-            {l:"⏸ Loiter",c:"btn-ghost"},
-            {l:"🏠 RTL",   c:"btn-a"},
-            {l:"⬇ Land",  c:"btn-ghost"},
-            {l:"💬 NLI",   c:"btn-c", cb:()=>setNliOpen(true)},
+            {l:"⏸ Loiter",c:"btn-ghost", cb:() => speakText("Misi dijeda. Drone menahan posisi di udara.")},
+            {l:"🏠 RTL",   c:"btn-a",     cb:() => { setPhase("landing"); setArmed(false); speakText("Manual override diaktifkan. Membatalkan misi dan kembali ke pangkalan."); }},
+            {l:"⬇ Land",  c:"btn-ghost", cb:() => { setPhase("landing"); setArmed(false); speakText("Manual override diaktifkan. Drone mendarat darurat di posisi saat ini."); }},
+            {l:"💬 NLI",   c:"btn-c",     cb:()=>setNliOpen(true)},
           ].map(({l,c,cb})=>(
             <button key={l} className={`btn ${c}`} style={{fontSize:10,padding:"6px"}} onClick={cb}>{l}</button>
           ))}
@@ -2107,7 +2107,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
             <RtlConfigView telemetry={telemetry} setTelemetry={setTelemetry} />
           )}
         </div>
-        <RightPanel phase={phase} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
+        <RightPanel phase={phase} setPhase={setPhase} setArmed={setArmed} telemetry={telemetry} alerts={alerts} onDismissAlert={id=>setAlerts(a=>a.filter(x=>x.id!==id))} setNliOpen={setNliOpen}/>
       </div>
       <TelemetryBar telemetry={telemetry} phase={phase}/>
       {pendingHitl&&<HitLModal data={pendingHitl} onConfirm={confirmHitl} onCancel={()=>setPendingHitl(null)}/>}
