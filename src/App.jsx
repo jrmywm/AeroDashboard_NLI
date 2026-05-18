@@ -1722,7 +1722,7 @@ export default function App() {
     let start = customRoute[0];
     let end = customRoute[1] || customRoute[0];
     let step = 0;
-    const totalSteps = 20; // 20 steps between waypoints (takes 4 seconds per waypoint)
+    const totalSteps = 40; // 40 steps between waypoints (takes 8 seconds per waypoint for smooth presentation)
 
     const interval = setInterval(() => {
       if (wpIdx >= customRoute.length - 1) {
