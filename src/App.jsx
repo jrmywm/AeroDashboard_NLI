@@ -41,6 +41,7 @@ function playWarningAudio(msg) {
 }
 
 function speakText(msg) {
+  if (window.ttsEnabled === false) return;
   try {
     if (msg && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -83,6 +84,18 @@ const GLOBAL_CSS = `
   --text3: #3A4E6B;
   --border: #1A2840;
   --border2: #243552;
+}
+
+/* Okabe-Ito Colorblind Accessibility Override */
+:root.colorblind {
+  --green: #0072B2 !important; /* Safe Blue */
+  --green-glow: rgba(0,114,178,0.3) !important;
+  --amber: #E69F00 !important; /* Safety Orange */
+  --amber-glow: rgba(230,159,0,0.35) !important;
+  --red: #CC79A7 !important;   /* Magenta */
+  --red-glow: rgba(204,121,167,0.35) !important;
+  --cyan: #56B4E9 !important;  /* Sky Blue */
+  --cyan-glow: rgba(86,180,233,0.3) !important;
 }
 
 html, body, #root { height: 100%; overflow: hidden; }
@@ -383,7 +396,7 @@ function SafetyBadge({passed}) {
 /* ─────────────────────────────────────────────────────────────────────────
    HEADER
 ───────────────────────────────────────────────────────────────────────── */
-function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handleApiKeyChange}) {
+function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handleApiKeyChange,colorblind,setColorblind,ttsEnabled,setTtsEnabled,setShortcutsGuideOpen}) {
   const phases = ["preflight","inflight","landing"];
   const labels = {"preflight":"Pre-Flight","inflight":"In-Flight","landing":"Landing"};
   return (
@@ -500,16 +513,94 @@ function Header({phase,setPhase,nliOpen,setNliOpen,telemetry,armed,apiKey,handle
         })}
       </div>
 
+      {/* Accessibility Toolbar */}
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"0 12px",borderLeft:"1px solid var(--border)",height:"100%"}}>
+        {/* Colorblind Toggle */}
+        <button 
+          onClick={() => {
+            setColorblind(v => !v);
+            speakText(!colorblind ? "Mode buta warna diaktifkan" : "Mode buta warna dimatikan");
+          }}
+          style={{
+            background: colorblind ? "rgba(0,114,178,0.15)" : "none",
+            border: `1px solid ${colorblind ? "var(--green)" : "var(--border)"}`,
+            borderRadius: 4,
+            padding: "4px 8px",
+            fontSize: 9,
+            color: colorblind ? "var(--green)" : "var(--text2)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontWeight: 700,
+            transition: "all 0.2s"
+          }}
+          title="Toggle Colorblind Mode (Shortcut: C)"
+        >
+          👁️ {colorblind ? "Colorblind ON" : "Colorblind"}
+        </button>
+
+        {/* TTS Toggle */}
+        <button 
+          onClick={() => {
+            setTtsEnabled(v => !v);
+            if (!ttsEnabled) {
+              window.ttsEnabled = true;
+              speakText("Suara asisten diaktifkan.");
+            }
+          }}
+          style={{
+            background: ttsEnabled ? "rgba(0,212,255,0.08)" : "none",
+            border: `1px solid ${ttsEnabled ? "var(--cyan)" : "var(--border)"}`,
+            borderRadius: 4,
+            padding: "4px 8px",
+            fontSize: 9,
+            color: ttsEnabled ? "var(--cyan)" : "var(--text3)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontWeight: 700,
+            transition: "all 0.2s"
+          }}
+          title="Toggle TTS Voice (Shortcut: V)"
+        >
+          🔊 {ttsEnabled ? "TTS ON" : "TTS Muted"}
+        </button>
+
+        {/* Key Guide Trigger */}
+        <button 
+          onClick={() => setShortcutsGuideOpen(v => !v)}
+          style={{
+            background: "none",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            padding: "4px 8px",
+            fontSize: 9,
+            color: "var(--text2)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontWeight: 700,
+            transition: "all 0.2s"
+          }}
+          title="Keyboard Shortcuts Cheatsheet (Shortcut: H)"
+        >
+          ⌨️ Shortcuts [H]
+        </button>
+      </div>
+
       {/* NLI toggle + time */}
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 16px",borderLeft:"1px solid var(--border)",height:"100%"}}>
         <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', padding: '4px 8px', border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 10, color: 'var(--text2)', marginRight: 6 }}>API Key:</span>
+          <span style={{ fontSize: 10, color: 'var(--text2)', marginRight: 6 }}>API:</span>
           <input 
             type="password" 
             placeholder="Gemini API Key" 
             value={apiKey} 
             onChange={handleApiKeyChange}
-            style={{ background: 'transparent', border: 'none', color: 'var(--cyan)', outline: 'none', width: '120px', fontSize: '11px', fontFamily: 'JetBrains Mono' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--cyan)', outline: 'none', width: '90px', fontSize: '11px', fontFamily: 'JetBrains Mono' }}
           />
         </div>
         <button
@@ -1485,6 +1576,57 @@ function LandingView({telemetry,setPhase,setArmed}) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   KEYBOARD SHORTCUTS MODAL
+───────────────────────────────────────────────────────────────────────── */
+function ShortcutsModal({isOpen,onClose}) {
+  if(!isOpen) return null;
+  const shortcuts = [
+    { key: "1", action: "Beralih ke Fase Pre-Flight" },
+    { key: "2", action: "Beralih ke Fase In-Flight" },
+    { key: "3", action: "Beralih ke Fase Landing" },
+    { key: "Space", action: "Arm/Disarm Drone (atau Konfirmasi HITL)" },
+    { key: "N", action: "Buka/Tutup AI Assistant (NLI Chat)" },
+    { key: "C", action: "Toggle Mode Buta Warna (Colorblind)" },
+    { key: "V", action: "Toggle Suara Asisten (TTS Voice)" },
+    { key: "H", action: "Buka/Tutup Panduan Shortcut Keyboard ini" },
+    { key: "Esc", action: "Tutup Modul / Batalkan Konfirmasi" }
+  ];
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="anim-fade" onClick={e=>e.stopPropagation()} style={{background:"var(--panel)",border:"1px solid var(--border)",borderRadius:12,padding:24,width:400,boxShadow:"0 0 60px rgba(0,0,0,0.8)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,borderBottom:"1px solid var(--border)",paddingBottom:12}}>
+          <span style={{fontSize:20}}>⌨️</span>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:"var(--cyan)"}}>Panduan Aksesibilitas Keyboard</div>
+            <div style={{fontSize:10,color:"var(--text3)"}}>GCS Hands-Free Keyboard Navigation</div>
+          </div>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+          {shortcuts.map(s=>(
+            <div key={s.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12}}>
+              <span style={{color:"var(--text2)"}}>{s.action}</span>
+              <kbd className="mono" style={{
+                background:"var(--card)",
+                border:"1px solid var(--border2)",
+                borderRadius:4,
+                padding:"2px 8px",
+                fontSize:10,
+                color:"var(--cyan)",
+                fontWeight:700,
+                boxShadow:"0 2px 0 rgba(0,0,0,0.4)"
+              }}>{s.key}</kbd>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn btn-c" onClick={onClose} style={{width:"100%"}}>✕ Tutup Panduan</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    ROOT APP
 ───────────────────────────────────────────────────────────────────────── */
 export default function App() {
@@ -1493,6 +1635,22 @@ export default function App() {
   const [nliOpen,  setNliOpen]  = useState(false);
   const [armed,    setArmed]    = useState(false);
   const [checklistDone, setChecklistDone] = useState(new Set());
+  const [colorblind, setColorblind] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [shortcutsGuideOpen, setShortcutsGuideOpen] = useState(false);
+  
+  useEffect(() => {
+    if (colorblind) {
+      document.documentElement.classList.add("colorblind");
+    } else {
+      document.documentElement.classList.remove("colorblind");
+    }
+  }, [colorblind]);
+
+  useEffect(() => {
+    window.ttsEnabled = ttsEnabled;
+  }, [ttsEnabled]);
+
   const [telemetry,setTelemetry]= useState({
     altitude:0.0, targetAlt:50, speed:0.0, battery:100.0,
     range:0.0, gps:30, rssi:-62, pitch:0.0, roll:0.0,
@@ -1793,9 +1951,86 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
 
   const onCheck=(id)=>setChecklistDone(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
 
+  // Global Keyboard Navigation and Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") {
+        return;
+      }
+      
+      const key = e.key.toLowerCase();
+      if (key === "1") {
+        setPhase("preflight");
+        speakText("Beralih ke fase pre flight");
+      } else if (key === "2") {
+        setPhase("inflight");
+        speakText("Beralih ke fase in flight");
+      } else if (key === "3") {
+        setPhase("landing");
+        speakText("Beralih ke fase landing");
+      } else if (key === "n") {
+        e.preventDefault();
+        setNliOpen(v => !v);
+      } else if (key === "c") {
+        setColorblind(v => !v);
+        // Using negation since state update is async
+        speakText(!colorblind ? "Mode buta warna diaktifkan" : "Mode buta warna dimatikan");
+      } else if (key === "v") {
+        setTtsEnabled(v => !v);
+        if (ttsEnabled) {
+          speakText("Suara asisten dinonaktifkan.");
+        } else {
+          window.ttsEnabled = true;
+          speakText("Suara asisten diaktifkan.");
+        }
+      } else if (key === "h") {
+        e.preventDefault();
+        setShortcutsGuideOpen(v => !v);
+      } else if (e.code === "Space") {
+        e.preventDefault();
+        if (pendingHitl) {
+          confirmHitl();
+        } else {
+          setArmed(a => {
+            const next = !a;
+            if (next) {
+              setChecklistDone(new Set(["chk1", "chk2", "chk3", "chk4"]));
+              setPhase("inflight");
+              speakText("Sistem dipersenjatai. Lepas landas otonom aktif.");
+            } else {
+              setPhase("preflight");
+              speakText("Sistem dimatikan.");
+            }
+            return next;
+          });
+        }
+      } else if (key === "escape") {
+        setPendingHitl(null);
+        setShortcutsGuideOpen(false);
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [phase, pendingHitl, ttsEnabled, colorblind, confirmHitl]);
+
   return (
     <div className="scanlines" style={{display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden",background:"var(--void)"}}>
-      <Header phase={phase} setPhase={setPhase} nliOpen={nliOpen} setNliOpen={setNliOpen} telemetry={telemetry} armed={armed} apiKey={apiKey} handleApiKeyChange={handleApiKeyChange}/>
+      <Header 
+        phase={phase} 
+        setPhase={setPhase} 
+        nliOpen={nliOpen} 
+        setNliOpen={setNliOpen} 
+        telemetry={telemetry} 
+        armed={armed} 
+        apiKey={apiKey} 
+        handleApiKeyChange={handleApiKeyChange}
+        colorblind={colorblind}
+        setColorblind={setColorblind}
+        ttsEnabled={ttsEnabled}
+        setTtsEnabled={setTtsEnabled}
+        setShortcutsGuideOpen={setShortcutsGuideOpen}
+      />
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
         <Sidebar phase={phase} armed={armed} telemetry={telemetry} activeView={activeView} setActiveView={setActiveView}/>
         {/* Collapsible NLI Chat Sidebar */}
@@ -1834,6 +2069,7 @@ Balas DALAM FORMAT JSON SAJA (tanpa backtick json):
       </div>
       <TelemetryBar telemetry={telemetry} phase={phase}/>
       {pendingHitl&&<HitLModal data={pendingHitl} onConfirm={confirmHitl} onCancel={()=>setPendingHitl(null)}/>}
+      <ShortcutsModal isOpen={shortcutsGuideOpen} onClose={()=>setShortcutsGuideOpen(false)} />
     </div>
   );
 }
