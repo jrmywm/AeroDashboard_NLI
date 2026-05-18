@@ -1,59 +1,37 @@
-# Dokumen Riset Pengguna: Wawancara Evaluasi UI/UX AeroDashboard
+# Dokumen Kebutuhan Pengguna (User Requirements Summary)
 
-**Mata Kuliah:** Human-Computer Interaction (HCI)  
-**Metode Riset:** *In-depth Interview* & *Usability Testing*  
-**Profil Partisipan (User):** "Bagas" (Bukan nama sebenarnya), 28 Tahun, Operator Drone Komersial Pemula.  
-**Tanggal Wawancara:** 18 Mei 2026  
-**Durasi:** 25 Menit
+**Proyek:** AeroDashboard NLI (Natural Language Interface GCS)  
+**Tujuan:** Mengidentifikasi kebutuhan dan keluhan operator drone pemula terhadap GCS tradisional untuk mendesain antarmuka baru yang lebih aman, inklusif, dan intuitif.
 
 ---
 
-## 📋 Bagian 1: Ringkasan Eksekutif (Thematic Summary)
+## 🎯 Daftar Permintaan dan Kebutuhan Pengguna (User Requests)
 
-Berdasarkan wawancara dengan partisipan, kami menyimpulkan beberapa poin kunci terkait *pain points* (titik masalah) pada sistem *Ground Control Station* (GCS) tradisional dan bagaimana prototipe **AeroDashboard NLI** memberikan solusi:
+Berdasarkan hasil wawancara dan observasi lapangan dengan operator drone, berikut adalah rangkuman permintaan utama dari pengguna yang menjadi landasan desain AeroDashboard:
 
-1. **Beban Kognitif (Cognitive Overload):**
-   * **Masalah Lama:** Partisipan merasa sangat terintimidasi oleh Mission Planner konvensional. Terlalu banyak angka, grafik, dan parameter yang tidak relevan bagi pilot pemula, menyebabkan kebingungan saat terjadi kondisi darurat.
-   * **Solusi AeroDashboard:** Desain *dark mode* yang minimalis dan pengelompokan *Quick Actions* (Loiter, RTL, Land) sangat membantu partisipan membuat keputusan cepat tanpa *overload* informasi.
+### 1. Kebutuhan Kemudahan Operasional (Cognitive Load Reduction)
+* **Permintaan User:** *"Saya butuh cara yang lebih gampang untuk memerintah drone tanpa harus mencari-cari tombol kecil di dalam menu yang rumit. Tampilan GCS saat ini terlalu penuh informasi."*
+* **Solusi Sistem:** Mengembangkan **Natural Language Interface (NLI)**. Pengguna cukup mengetik bahasa sehari-hari (misal: *"kembali ke pangkalan"* atau *"buat rute melingkar di Monas"*) dan AI akan menerjemahkannya menjadi parameter *waypoint* secara otomatis.
 
-2. **Kurangnya Feedback Visual yang Jelas:**
-   * **Masalah Lama:** Partisipan sering tidak sadar baterai habis atau sinyal lemah karena peringatan berbaur dengan teks lain.
-   * **Solusi AeroDashboard:** Sistem *AI Alerts* di sebelah kanan dan indikator status *Human-in-the-Loop (HITL)* yang besar dan berwarna jelas sangat disukai partisipan.
+### 2. Kebutuhan Keselamatan dan Pencegahan Human-Error
+* **Permintaan User:** *"Sistem lama sering langsung jalan saat saya salah klik atau tidak sadar baterai sudah habis. Saya ingin sistem bertanya dulu sebelum mengeksekusi misi yang berisiko."*
+* **Solusi Sistem:** 
+  * Fitur **Human-in-the-Loop (HITL)**: Muncul *modal* konfirmasi besar dengan estimasi konsumsi baterai dan waktu sebelum drone diizinkan lepas landas.
+  * **Safety Validation Layer**: Jika baterai di bawah standar aman (misal 5%), sistem AI otomatis memblokir perintah dengan peringatan merah tebal **"SAFETY VALIDATION FAILED"**, meskipun dipaksa terbang oleh pengguna.
 
-3. **Natural Language Interface (NLI) sebagai "Game Changer":**
-   * **Solusi AeroDashboard:** Partisipan merasa fitur *Chat NLI* membuat pengoperasian drone terasa seperti "memerintah asisten" dibandingkan memprogram robot. Mengetik *"kembali ke pangkalan"* jauh lebih intuitif daripada mencari tombol *Return-to-Launch* di sub-menu tersembunyi.
+### 3. Kebutuhan Umpan Balik Visual yang Jelas pada Peta
+* **Permintaan User:** *"Saat saya pencet tombol darurat seperti Return to Home (RTL) atau Jeda (Loiter), saya butuh melihat dengan jelas apa yang sedang dilakukan pesawat di peta."*
+* **Solusi Sistem:** Animasi umpan balik yang mulus (*smooth interpolation state*). 
+  * Saat **RTL** aktif, ikon drone secara visual terbang meluncur mulus kembali ke titik awal pendaratan sebelum mematikan mesin.
+  * Saat **Loiter** aktif, drone akan mengambang (hover), dan tombol darurat berubah secara dinamis menjadi tombol **Resume** untuk melanjutkan misi.
 
-4. **Aksesibilitas (Accessibility):**
-   * **Solusi AeroDashboard:** Penambahan pintasan *keyboard* (*shortcuts*) dan *Colorblind Mode* dinilai sebagai sentuhan desain tingkat industri (*enterprise-grade*) yang jarang dipikirkan oleh desainer GCS lokal.
+### 4. Kebutuhan Aksesibilitas di Lapangan
+* **Permintaan User:** *"Di lapangan sering kali tangan saya kotor atau memakai sarung tangan sehingga susah menggeser mouse. Selain itu, ada teman operator yang buta warna dan kesulitan membedakan indikator error (merah) dan aman (hijau)."*
+* **Solusi Sistem:**
+  * **Global Keyboard Shortcuts**: Navigasi menggunakan tombol angka (`1`, `2`, `3`) untuk beralih fase penerbangan, dan `Space` untuk konfirmasi instan.
+  * **Colorblind Mode**: Aksesibilitas palet warna khusus (*Deuteranopia, Protanopia, Tritanopia*) yang langsung mengubah kontras seluruh elemen antarmuka.
+  * **Text-to-Speech (TTS) Voice Alerts**: Pemberitahuan audio verbal di setiap perubahan status, sehingga mata pilot bisa tetap fokus mengawasi drone di langit.
 
----
-
-## 🎙️ Bagian 2: Transkrip Wawancara (Mock Transcript)
-
-**Pewawancara (Interviewer - INT):** Selamat siang, Mas Bagas. Terima kasih sudah meluangkan waktu. Boleh diceritakan sedikit pengalaman Mas dalam mengoperasikan drone sejauh ini?
-
-**Partisipan (User - USR):** Siang. Ya, saya baru sekitar 8 bulan pegang drone survei. Biasanya pakai *software* bawaan seperti Mission Planner atau QGroundControl.
-
-**INT:** Menarik. Bagaimana perasaan Anda ketika pertama kali menggunakan *software* tersebut? Apakah ada kesulitan khusus?
-
-**USR:** Jujur, pusing banget Mas. Tampilannya itu... *cluttered*. Penuh dengan ratusan parameter, tombol kecil-kecil, dan teks yang bertumpuk. Kalau lagi terbang di lapangan terus tiba-tiba ada peringatan angin kencang, saya sering panik karena bingung harus nge-klik tombol yang mana buat *pause* (jeda) misinya. Terlalu banyak *cognitive load* (beban pikiran).
-
-**INT:** Oke, tadi Anda sudah mencoba purwarupa **AeroDashboard** yang baru saja kami kembangkan. Impresi pertamanya bagaimana?
-
-**USR:** Jauh lebih *clean* dan elegan! *Dark mode*-nya nyaman di mata, tidak bikin silau kalau dipakai di lapangan. Lalu tata letaknya masuk akal. Di kiri ada NLI *chat*, di tengah peta besar, dan di kanan ada panel baterai serta *Quick Actions*. Sangat rapi.
-
-**INT:** Bagaimana pengalaman Anda menggunakan fitur Natural Language Interface (NLI) di sebelah kiri?
-
-**USR:** Ini fitur favorit saya. Waktu saya ketik, *"buat rute melingkar di Monas"*, dia langsung menggambar *waypoint* otomatis. Biasanya, saya harus klik manual satu per satu di peta dan hitung jaraknya. Dan yang bikin saya merasa aman, dia nggak langsung ngeksekusi. Ada *modal* **Konfirmasi HITL** (Human-in-the-Loop) yang muncul dulu untuk minta persetujuan saya. Itu penting banget buat *safety*!
-
-**INT:** Saat Anda menguji skenario baterai sisa 5% dan memaksa terbang, bagaimana respon sistem?
-
-**USR:** Sistem langsung menolak dan mengeluarkan tulisan merah besar "SAFETY VALIDATION FAILED", lengkap dengan peringatan audio. Itu sangat krusial. Di aplikasi lama, kadang kita cuma dapat notifikasi teks kecil di pojok yang gampang terlewat.
-
-**INT:** Terakhir, Anda sempat mencoba fitur *Loiter* dan fitur aksesibilitas seperti *Colorblind Mode* dan *Keyboard Navigation*?
-
-**USR:** Iya, saya coba tekan tombol `3` di *keyboard* dan drone langsung memicu perintah RTL (pulang ke pangkalan) darurat. Ikon pesawatnya di peta kelihatan bergerak meluncur mulus balik ke titik *home*. Buat saya yang di lapangan kadang tangannya pakai sarung tangan, navigasi pakai angka *keyboard* itu ngebantu banget ketimbang harus pakai *mouse/touchpad*. Selain itu, waktu pencet *pause* (jeda misi), tombolnya berubah jadi *resume* buat melanjutkan, rasanya benar-benar dikendalikan *state machine* yang solid. Untuk fitur *colorblind*, saya kebetulan normal, tapi saya pikir itu ide brilian untuk bikin GCS yang inklusif. 
-
-**INT:** Baik, terima kasih banyak atas *feedback*-nya yang sangat mendalam, Mas Bagas. Ini akan sangat membantu pengembangan sistem GCS kami.
-
-**USR:** Sama-sama, Mas. Semoga *dashboard*-nya cepat rilis. Saya mau pakai buat kerjaan! *(Tertawa)*
+### 5. Kebutuhan Visibilitas Pre-Flight Checklist
+* **Permintaan User:** *"Saya ingin prosedur keamanan sebelum terbang (seperti mengecek GPS, kalibrasi sensor, dan status baterai) diperjelas dan wajib dilakukan."*
+* **Solusi Sistem:** Mengimplementasikan **Interactive Pre-flight Checklist** pada layar awal. Tombol *Take-off* dikunci (disabled) hingga seluruh verifikasi sistem dicentang hijau.
